@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import CameraView from './components/CameraView';
 import { initOcr, recognizeText } from './lib/ocr';
 import { initTranslator, translateText } from './lib/translator';
@@ -10,24 +10,26 @@ function App() {
   const [initProgress, setInitProgress] = useState({ ocr: 0, translator: 0 });
   const [error, setError] = useState(null);
   
-  const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState(null); 
-  const [isFirstCapture, setIsFirstCapture] = useState(true);
+  const [debugLog, setDebugLog] = useState("Waiting for models to load...");
   
-  // Debug state
-  const [debugLog, setDebugLog] = useState("Waiting for first scan...");
+  // Use a ref to track last OCR text to avoid stale closures
+  const lastOcrTextRef = useRef('');
 
   useEffect(() => {
     const initializeEngines = async () => {
       try {
+        setDebugLog("Loading OCR engine...");
         await initOcr((progress) => {
           setInitProgress(prev => ({ ...prev, ocr: progress }));
         });
         
+        setDebugLog("Loading translation model...");
         await initTranslator((progress) => {
           setInitProgress(prev => ({ ...prev, translator: progress }));
         });
         
+        setDebugLog("Ready! Scanning will begin shortly...");
         setIsInitializing(false);
       } catch (err) {
         console.error('Initialization error:', err);
@@ -38,50 +40,45 @@ function App() {
     initializeEngines();
   }, []);
 
-  const handleCapture = async (imageDataUrl) => {
-    setIsProcessing(true);
-    setDebugLog("Captured frame. Running OCR...");
+  const handleCapture = useCallback(async (imageDataUrl) => {
+    setDebugLog("Scanning frame...");
     try {
       const extractedText = await recognizeText(imageDataUrl);
       const cleanedText = extractedText.trim();
       
-      setDebugLog(`OCR finished. Found ${cleanedText.length} characters.`);
-      
-      // Update OCR result immediately so we know it's reading
-      if (cleanedText) {
-        setResult(prev => ({
-          original: cleanedText,
-          translated: prev?.translated || ''
-        }));
-      }
-
-      // Skip translation if it's identical or totally empty
       if (!cleanedText) {
-        setDebugLog("OCR returned empty text. Waiting for better frame.");
-        return;
-      }
-      if (result && result.original === cleanedText) {
-        setDebugLog("Text hasn't changed. Skipping translation.");
+        setDebugLog("No text detected. Trying again...");
         return;
       }
       
-      setDebugLog("Translating...");
+      setDebugLog(`Found: "${cleanedText.substring(0, 50)}..." — Translating...`);
+
+      // Show detected text immediately
+      setResult(prev => ({
+        original: cleanedText,
+        translated: prev?.translated || 'Translating...'
+      }));
+
+      // Skip translation if identical to last
+      if (cleanedText === lastOcrTextRef.current) {
+        setDebugLog("Same text detected, skipping translation.");
+        return;
+      }
+      lastOcrTextRef.current = cleanedText;
+      
       const translated = await translateText(cleanedText);
       
       setResult({
         original: cleanedText,
         translated: translated
       });
-      setIsFirstCapture(false);
       setDebugLog("Translation complete!");
       
     } catch (err) {
       console.error('Processing error:', err);
-      setDebugLog(`Error: ${err.message || err.toString()}`);
-    } finally {
-      setIsProcessing(false);
+      setDebugLog(`Error: ${err.message}`);
     }
-  };
+  }, []);
 
   return (
     <div className="app-container">
@@ -133,7 +130,7 @@ function App() {
             <div className="camera-layout-wrapper">
                <CameraView onCapture={handleCapture} />
                <div className="glass-panel debug-panel">
-                 Status: {debugLog}
+                 {debugLog}
                </div>
             </div>
           )}
@@ -150,12 +147,7 @@ function App() {
                 <div className="panel-accent-border primary-border"></div>
                 <h3>Detected French</h3>
                 <div className="result-box">
-                  {isFirstCapture && isProcessing ? (
-                    <div className="skeleton-loader">
-                      <div className="skeleton-line w-75"></div>
-                      <div className="skeleton-line w-50"></div>
-                    </div>
-                  ) : result?.original ? (
+                  {result?.original ? (
                     <p className="result-text">{result.original}</p>
                   ) : (
                     <p className="placeholder-text">Point camera at text to translate...</p>
@@ -176,12 +168,7 @@ function App() {
                 <div className="panel-accent-border success-border"></div>
                 <h3>English Translation</h3>
                 <div className="result-box">
-                  {isFirstCapture && isProcessing ? (
-                    <div className="skeleton-loader">
-                      <div className="skeleton-line w-100 mt-2"></div>
-                      <div className="skeleton-line w-75"></div>
-                    </div>
-                  ) : result?.translated ? (
+                  {result?.translated ? (
                     <p className="result-text translated-text">{result.translated}</p>
                   ) : (
                     <p className="placeholder-text">Translation will appear here...</p>
