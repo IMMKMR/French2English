@@ -44,30 +44,6 @@ const CameraView = ({ onCapture, isProcessing }) => {
     };
   }, []);
 
-  const preprocessCanvas = (canvas, context, width, height) => {
-    // Advanced image preprocessing for better OCR
-    const imageData = context.getImageData(0, 0, width, height);
-    const data = imageData.data;
-    
-    // Apply grayscale and high contrast thresholding
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      
-      // Convert to grayscale using luminance
-      let v = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-      
-      // Increase contrast (thresholding to make text pop)
-      // Any pixel darker than average becomes black, lighter becomes white
-      v = v > 128 ? 255 : 0; 
-      
-      data[i] = data[i + 1] = data[i + 2] = v;
-    }
-    
-    context.putImageData(imageData, 0, 0);
-  };
-
   const captureFrame = useCallback(() => {
     if (!videoRef.current || !canvasRef.current || isProcessing || !isActiveRef.current) return;
     
@@ -81,11 +57,8 @@ const CameraView = ({ onCapture, isProcessing }) => {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     
-    const context = canvas.getContext('2d', { willReadFrequently: true });
+    const context = canvas.getContext('2d');
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // Preprocess the image to improve OCR accuracy
-    preprocessCanvas(canvas, context, canvas.width, canvas.height);
     
     const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
     onCapture(imageDataUrl);

@@ -11,12 +11,12 @@ export const initOcr = async (onProgress) => {
         }
       }
     });
-    // Use PSM 11 (Sparse text) which is much better for finding text on objects/labels with varied layouts
+    // Setting PSM to 3 (default) or 4 (assume a single column of text of variable sizes) usually works best.
+    // 11 can be overly sensitive and read garbage from shadows. We will use 3 (fully automatic).
     await worker.setParameters({
-      tessedit_pageseg_mode: '11', 
+      tessedit_pageseg_mode: '3', 
       tessjs_create_pdf: '0',
-      tessjs_create_hocr: '0',
-      tessedit_char_whitelist: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?-\'éèêëàâçîïôùûüÉÈÊËÀÂÇÎÏÔÙÛÜ '
+      tessjs_create_hocr: '0'
     });
   }
   return worker;
