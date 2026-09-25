@@ -1,21 +1,20 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
 
-const CameraView = ({ onCapture, isProcessing }) => {
+const CameraView = ({ onCapture }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [stream, setStream] = useState(null);
   const [error, setError] = useState('');
   
-  // Track if we should continue processing frames
   const isActiveRef = useRef(true);
+  const [isProcessingLocal, setIsProcessingLocal] = useState(false);
 
   const startCamera = async () => {
     try {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
-      // Request a high resolution feed if possible to improve OCR
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'environment',
@@ -44,16 +43,13 @@ const CameraView = ({ onCapture, isProcessing }) => {
     };
   }, []);
 
-  const captureFrame = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current || isProcessing || !isActiveRef.current) return;
+  const captureFrame = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current || !isActiveRef.current) return;
     
     const video = videoRef.current;
-    
-    // Ensure video is ready
     if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
 
     const canvas = canvasRef.current;
-    
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     
@@ -61,19 +57,31 @@ const CameraView = ({ onCapture, isProcessing }) => {
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     
     const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-    onCapture(imageDataUrl);
-  }, [isProcessing, onCapture]);
+    
+    setIsProcessingLocal(true);
+    try {
+      await onCapture(imageDataUrl);
+    } finally {
+      setIsProcessingLocal(false);
+    }
+  }, [onCapture]);
 
-  // Real-time loop
   useEffect(() => {
     let timeoutId;
+    let isCapturing = false;
     
-    const loop = () => {
-      // Throttle captures to give the engine time to process
-      if (!isProcessing) {
-        captureFrame();
+    const loop = async () => {
+      if (!isCapturing && isActiveRef.current) {
+        isCapturing = true;
+        try {
+          await captureFrame();
+        } catch (e) {
+          console.error(e);
+        }
+        isCapturing = false;
       }
-      timeoutId = setTimeout(loop, 1000); // Check every 1 second
+      // Wait 1 second after previous capture FINISHES
+      timeoutId = setTimeout(loop, 1000); 
     };
     
     loop();
@@ -81,7 +89,7 @@ const CameraView = ({ onCapture, isProcessing }) => {
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [captureFrame, isProcessing]);
+  }, [captureFrame]);
 
   return (
     <div className="camera-view-container glass-panel">
@@ -95,17 +103,14 @@ const CameraView = ({ onCapture, isProcessing }) => {
       ) : (
         <div className="video-wrapper">
           <video ref={videoRef} autoPlay playsInline className="video-feed" />
-          {/* Debug canvas could be shown if needed, but we keep it hidden */}
           <canvas ref={canvasRef} style={{ display: 'none' }} />
           
-          {/* We only show a subtle indicator when processing instead of blocking the whole view */}
-          {isProcessing && (
+          {isProcessingLocal && (
             <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm rounded-full p-2 flex items-center justify-center border border-white/10 z-10">
                <RefreshCw className="w-5 h-5 animate-spin text-primary" />
             </div>
           )}
           
-          {/* Reticle to guide the user */}
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-0">
              <div className="w-3/4 h-1/2 border-2 border-primary/50 rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.3)] flex flex-col justify-between">
                 <div className="flex justify-between w-full p-2">

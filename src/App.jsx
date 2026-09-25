@@ -41,13 +41,16 @@ function App() {
       const extractedText = await recognizeText(imageDataUrl);
       const cleanedText = extractedText.trim();
       
-      // Skip if nothing meaningful is found
-      if (cleanedText.length < 3) {
-        return;
+      // Update OCR result immediately so we know it's reading
+      if (cleanedText) {
+        setResult(prev => ({
+          original: cleanedText,
+          translated: prev?.translated || ''
+        }));
       }
 
-      // If we already have this exact text, skip translation
-      if (result && result.original === cleanedText) {
+      // Skip translation if it's identical or totally empty
+      if (!cleanedText || (result && result.original === cleanedText)) {
         return;
       }
       
@@ -113,7 +116,7 @@ function App() {
               <p>{error}</p>
             </div>
           ) : (
-            <CameraView onCapture={handleCapture} isProcessing={isProcessing} />
+            <CameraView onCapture={handleCapture} />
           )}
         </div>
 
