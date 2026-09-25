@@ -12,6 +12,7 @@ function App() {
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState(null); 
+  const [isFirstCapture, setIsFirstCapture] = useState(true);
 
   useEffect(() => {
     const initializeEngines = async () => {
@@ -36,18 +37,30 @@ function App() {
 
   const handleCapture = async (imageDataUrl) => {
     setIsProcessing(true);
-    setResult(null);
     try {
       const extractedText = await recognizeText(imageDataUrl);
-      const translated = await translateText(extractedText);
+      const cleanedText = extractedText.trim();
+      
+      // Skip if nothing meaningful is found
+      if (cleanedText.length < 3) {
+        return;
+      }
+
+      // If we already have this exact text, skip translation
+      if (result && result.original === cleanedText) {
+        return;
+      }
+      
+      const translated = await translateText(cleanedText);
       
       setResult({
-        original: extractedText,
+        original: cleanedText,
         translated: translated
       });
+      setIsFirstCapture(false);
+      
     } catch (err) {
       console.error('Processing error:', err);
-      alert('Error processing image.');
     } finally {
       setIsProcessing(false);
     }
@@ -115,7 +128,7 @@ function App() {
                 <div className="panel-accent-border primary-border"></div>
                 <h3>Detected French</h3>
                 <div className="result-box">
-                  {isProcessing ? (
+                  {isFirstCapture && isProcessing ? (
                     <div className="skeleton-loader">
                       <div className="skeleton-line w-75"></div>
                       <div className="skeleton-line w-50"></div>
@@ -123,7 +136,7 @@ function App() {
                   ) : result?.original ? (
                     <p className="result-text">{result.original}</p>
                   ) : (
-                    <p className="placeholder-text">Take a photo to detect text...</p>
+                    <p className="placeholder-text">Point camera at text to translate...</p>
                   )}
                 </div>
               </motion.div>
@@ -141,7 +154,7 @@ function App() {
                 <div className="panel-accent-border success-border"></div>
                 <h3>English Translation</h3>
                 <div className="result-box">
-                  {isProcessing ? (
+                  {isFirstCapture && isProcessing ? (
                     <div className="skeleton-loader">
                       <div className="skeleton-line w-100 mt-2"></div>
                       <div className="skeleton-line w-75"></div>
