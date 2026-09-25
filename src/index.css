@@ -27,7 +27,6 @@ body {
   color: var(--text-main);
   min-height: 100vh;
   overflow-x: hidden;
-  /* Premium Dark mode background with subtle gradients */
   background-image: 
     radial-gradient(circle at 10% 20%, var(--primary-glow) 0%, transparent 40%),
     radial-gradient(circle at 90% 80%, var(--accent-glow) 0%, transparent 40%);
@@ -41,13 +40,11 @@ body {
   flex-direction: column;
 }
 
-/* Typography */
 h1, h2, h3 {
   font-family: 'Outfit', sans-serif;
   letter-spacing: -0.02em;
 }
 
-/* Glass Panel Base */
 .glass-panel {
   background: var(--bg-panel);
   backdrop-filter: blur(16px);
@@ -57,7 +54,6 @@ h1, h2, h3 {
   border-radius: 1.5rem;
 }
 
-/* Layout */
 .app-container {
   min-height: 100vh;
   width: 100%;
@@ -101,7 +97,7 @@ h1, h2, h3 {
 
 .main-layout {
   width: 100%;
-  max-width: 64rem; /* 1024px */
+  max-width: 64rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -214,6 +210,23 @@ h1, h2, h3 {
   margin-bottom: 1rem;
 }
 
+/* New Layout Wrappers */
+.camera-layout-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.debug-panel {
+  padding: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  word-break: break-all;
+  font-family: monospace;
+}
+
 /* Camera View Component */
 .camera-view-container {
   position: relative;
@@ -266,70 +279,66 @@ h1, h2, h3 {
   object-fit: cover;
 }
 
-.processing-overlay {
+.processing-indicator {
   position: absolute;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  top: 1rem;
+  right: 1rem;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  border-radius: 9999px;
+  padding: 0.5rem;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 10;
-  color: white;
 }
 
-.spinner-icon {
-  width: 3rem;
-  height: 3rem;
+.spinner-icon-small {
+  width: 1.25rem;
+  height: 1.25rem;
   animation: spin 2s linear infinite;
   color: var(--primary);
-  margin-bottom: 1rem;
 }
 
-.camera-controls {
+.reticle-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 0;
+}
+
+.reticle-box {
+  width: 75%;
+  height: 50%;
+  border: 2px solid rgba(59, 130, 246, 0.5);
+  border-radius: 0.75rem;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.reticle-corners {
+  display: flex;
+  justify-content: space-between;
   width: 100%;
-  padding: 1.5rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(8px);
-  border-top: 1px solid var(--glass-border);
+  padding: 0.5rem;
 }
 
-.capture-btn {
-  width: 5rem;
-  height: 5rem;
-  border-radius: 50%;
-  border: 4px solid rgba(59, 130, 246, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
+.corner {
+  width: 1rem;
+  height: 1rem;
+  border-color: var(--primary);
 }
 
-.capture-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.capture-btn-inner {
-  width: 4rem;
-  height: 4rem;
-  border-radius: 50%;
-  background-color: var(--primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
-  transition: background-color 0.2s;
-}
-.capture-btn:not(:disabled):hover .capture-btn-inner {
-  background-color: #2563eb;
-}
+.top-left { border-top: 2px solid; border-left: 2px solid; }
+.top-right { border-top: 2px solid; border-right: 2px solid; }
+.bottom-left { border-bottom: 2px solid; border-left: 2px solid; }
+.bottom-right { border-bottom: 2px solid; border-right: 2px solid; }
 
 /* Result Panels */
 .result-panel {

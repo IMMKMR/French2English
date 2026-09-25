@@ -15,11 +15,12 @@ const CameraView = ({ onCapture }) => {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
+      // Request standard resolution for better performance
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'environment',
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         }
       });
       setStream(mediaStream);
@@ -47,16 +48,31 @@ const CameraView = ({ onCapture }) => {
     if (!videoRef.current || !canvasRef.current || !isActiveRef.current) return;
     
     const video = videoRef.current;
-    if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+    // Mobile browsers might have different ready states, ensure it has some video
+    if (video.readyState < 2) return; 
 
     const canvas = canvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    
+    // Scale down the image for OCR to massively improve performance and reliability
+    // Tesseract struggles and hangs on huge 1080p+ images in browser
+    const MAX_WIDTH = 800;
+    let width = video.videoWidth;
+    let height = video.videoHeight;
+    
+    if (width > MAX_WIDTH) {
+      height = Math.round((height * MAX_WIDTH) / width);
+      width = MAX_WIDTH;
+    }
+
+    if (width === 0 || height === 0) return;
+
+    canvas.width = width;
+    canvas.height = height;
     
     const context = canvas.getContext('2d');
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     
-    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.8);
     
     setIsProcessingLocal(true);
     try {
@@ -80,8 +96,8 @@ const CameraView = ({ onCapture }) => {
         }
         isCapturing = false;
       }
-      // Wait 1 second after previous capture FINISHES
-      timeoutId = setTimeout(loop, 1000); 
+      // Wait 1.5 seconds after previous capture FINISHES
+      timeoutId = setTimeout(loop, 1500); 
     };
     
     loop();
@@ -106,20 +122,20 @@ const CameraView = ({ onCapture }) => {
           <canvas ref={canvasRef} style={{ display: 'none' }} />
           
           {isProcessingLocal && (
-            <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm rounded-full p-2 flex items-center justify-center border border-white/10 z-10">
-               <RefreshCw className="w-5 h-5 animate-spin text-primary" />
+            <div className="processing-indicator">
+               <RefreshCw className="spinner-icon-small" />
             </div>
           )}
           
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-0">
-             <div className="w-3/4 h-1/2 border-2 border-primary/50 rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.3)] flex flex-col justify-between">
-                <div className="flex justify-between w-full p-2">
-                   <div className="w-4 h-4 border-t-2 border-l-2 border-primary"></div>
-                   <div className="w-4 h-4 border-t-2 border-r-2 border-primary"></div>
+          <div className="reticle-container">
+             <div className="reticle-box">
+                <div className="reticle-corners top-corners">
+                   <div className="corner top-left"></div>
+                   <div className="corner top-right"></div>
                 </div>
-                <div className="flex justify-between w-full p-2">
-                   <div className="w-4 h-4 border-b-2 border-l-2 border-primary"></div>
-                   <div className="w-4 h-4 border-b-2 border-r-2 border-primary"></div>
+                <div className="reticle-corners bottom-corners">
+                   <div className="corner bottom-left"></div>
+                   <div className="corner bottom-right"></div>
                 </div>
              </div>
           </div>

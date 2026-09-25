@@ -13,6 +13,9 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState(null); 
   const [isFirstCapture, setIsFirstCapture] = useState(true);
+  
+  // Debug state
+  const [debugLog, setDebugLog] = useState("Waiting for first scan...");
 
   useEffect(() => {
     const initializeEngines = async () => {
@@ -37,9 +40,12 @@ function App() {
 
   const handleCapture = async (imageDataUrl) => {
     setIsProcessing(true);
+    setDebugLog("Captured frame. Running OCR...");
     try {
       const extractedText = await recognizeText(imageDataUrl);
       const cleanedText = extractedText.trim();
+      
+      setDebugLog(`OCR finished. Found ${cleanedText.length} characters.`);
       
       // Update OCR result immediately so we know it's reading
       if (cleanedText) {
@@ -50,10 +56,16 @@ function App() {
       }
 
       // Skip translation if it's identical or totally empty
-      if (!cleanedText || (result && result.original === cleanedText)) {
+      if (!cleanedText) {
+        setDebugLog("OCR returned empty text. Waiting for better frame.");
+        return;
+      }
+      if (result && result.original === cleanedText) {
+        setDebugLog("Text hasn't changed. Skipping translation.");
         return;
       }
       
+      setDebugLog("Translating...");
       const translated = await translateText(cleanedText);
       
       setResult({
@@ -61,9 +73,11 @@ function App() {
         translated: translated
       });
       setIsFirstCapture(false);
+      setDebugLog("Translation complete!");
       
     } catch (err) {
       console.error('Processing error:', err);
+      setDebugLog(`Error: ${err.message || err.toString()}`);
     } finally {
       setIsProcessing(false);
     }
@@ -116,7 +130,12 @@ function App() {
               <p>{error}</p>
             </div>
           ) : (
-            <CameraView onCapture={handleCapture} />
+            <div className="camera-layout-wrapper">
+               <CameraView onCapture={handleCapture} />
+               <div className="glass-panel debug-panel">
+                 Status: {debugLog}
+               </div>
+            </div>
           )}
         </div>
 
